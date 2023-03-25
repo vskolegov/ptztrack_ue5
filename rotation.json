@@ -1,0 +1,12 @@
+{
+    "objectPath" : "/Game/InCamVFXBP/Maps/LED_CurvedStage.LED_CurvedStage:PersistentLevel.CineCameraActor_1",
+    "functionName":"SetActorRotation",
+    "parameters": {
+        "NewRotation": {
+            "Pitch":90,
+            "Yaw":0,
+            "Roll":0
+        }
+    },
+    "generateTransaction":true
+}
