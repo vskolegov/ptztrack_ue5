@@ -1,0 +1,8 @@
+{
+    "objectPath" : "/Game/InCamVFXBP/Maps/LED_CurvedStage.LED_CurvedStage:PersistentLevel.CineCameraActor_1.CameraComponent",
+    "functionName":"SetCurrentFocalLength",
+    "parameters": {
+            "InFocalLength":15
+    },
+    "generateTransaction":true
+}
