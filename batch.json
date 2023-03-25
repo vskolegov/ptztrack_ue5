@@ -1,29 +1,33 @@
 {
-  "requests": [
-    {
-      "id": "1",
-      "url": "/remote/object/call",
-      "method": "PUT",
-      "headers": {
-        "Content-Type": "application/json"
-      },
-        "body": {
-          "objectPath" : "/Game/InCamVFXBP/Maps/LED_CurvedStage.LED_CurvedStage:PersistentLevel.CineCameraActor_1",
-          "functionName" : "SetActorRotation",
-          "parameters" : {"NewRotation": {"Pitch": 90, "Yaw": 90, "Roll": 0}, "bSweep": "TRUE"}, "generateTransaction": "True"}
-    },
-    {
-      "id": "2",
-      "url": "/remote/object/call",
-      "method": "PUT",
-      "headers": {
-        "Content-Type": "application/json"
-      },
-      "body": {
-        "objectPath" : "/Game/InCamVFXBP/Maps/LED_CurvedStage.LED_CurvedStage:PersistentLevel.CineCameraActor_1.CameraComponent",
-        "functionName" : "SetCurrentFocalLength",
-        "parameters" : {"InFocalLength": 12}
-      }
-    }
-  ]
+    "Requests" : [
+        {
+            "RequestId" : 1,
+            "URL": "/remote/object/call",
+            "Verb" : "PUT",
+            "Body": {
+                "objectPath" : "/Game/InCamVFXBP/Maps/LED_CurvedStage.LED_CurvedStage:PersistentLevel.CineCameraActor_1",
+                "functionName": "SetActorRotation",
+                "parameters" : {
+                      "NewRotation": {
+          				  "Pitch":90,
+         				  "Yaw":0,
+          				  "Roll":0
+                      }
+        }
+            }
+        },
+        {
+            "RequestId" : 2,
+            "URL": "/remote/object/call",
+            "Verb" : "PUT",
+            "Body": {
+                "objectPath" : "/Game/InCamVFXBP/Maps/LED_CurvedStage.LED_CurvedStage:PersistentLevel.CineCameraActor_1.CameraComponent",
+                "functionName": "SetCurrentFocalLength",
+                "parameters" : {
+                  "InFocalLength": 12
+                }
+              
+            }
+        }
+    ]
 }
