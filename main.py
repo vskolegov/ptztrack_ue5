@@ -1,69 +1,153 @@
-import requests
-import json
-import signal, sys
+from PySide6.QtCore import QObject, Signal, Slot, QUrl, Property
+from pathlib import Path
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlApplicationEngine, QmlElement
+from PySide6.QtQuickControls2 import QQuickStyle
+
+from time import sleep
+import sys
+import signal
 from colorama import init, Fore, Back, Style
+from onvif import ONVIFCamera
+
+from backend.connector import *
 
 
-init(autoreset=True)
+class PTZCameras(QObject):
+    cameraInitialized = Signal()
+    onCamerasChanged = Signal()
+    onCameraKeysChanged = Signal()
+    onSceneKeysChanged = Signal()
+    onSceneChanged = Signal()
+    current_scene = ""
 
 
-address = 'http://127.0.0.1:30010'
-headers = {'Content-Type': 'application/json'}
+    def __init__(self):
+        super().__init__()
 
-try:
-    response = requests.get(address + "/remote/info")
-    if response.status_code != 200:
-        raise Exception
-    else:
-        print(Back.GREEN + "Successfully connected to Unreal Engine")
-except:
-    print(Back.RED + "Can't connect to Unreal Engine")
-    sys.exit()
+        self.scene_list = dict()
+        self.storage = dict()
+# upload cameras in from client storage to json
+    @Slot()
+    def initialize_cameras(self):
+        add_cameras_to_scene(self.current_scene, self.storage)
+        self.cameraInitialized.emit()
+
+    @Slot("QVariant")
+    def add_new_scene(self, scene):
+        self.storage = dict()
+        add_cameras_to_scene(scene, self.storage)
+        self.current_scene = scene
+        self.__set_cameras(self.storage)
+        self.onSceneKeysChanged.emit()
+
+# load cameras to selected scene from json
+    @Slot("QVariant")
+    def load_scene(self, scene):
+        self.storage = dict()
+        for camera in get_camereas(scene + ".json"):
+            self.store(camera['ip'], camera['port'], camera['unreal_name'])
+        self.current_scene = scene
+        self.onSceneKeysChanged.emit()
+# load list of scenes by existed jsons
+    @Slot()
+    def get_scenes(self):
+        self.scene_list = get_scene_names()
+        self.onSceneKeysChanged.emit()
+
+# load a new camera to the client storage
+    @Slot("QVariant, QVariant, QVariant")
+    def store(self, ip, port, name):
+        self.storage[(ip, port)] = name
+        self.__set_cameras(self.storage)
+
+# load edited camera to the client storage
+    @Slot("QVariant", "QVariant")
+    def edit_camera(self, socket, new_socket):
+        ip, port = socket.split(':')
+        new_ip, new_port = new_socket.split(':')
+        if (ip, port) not in self.storage:
+            return
+        if (new_ip, new_port) in self.storage:
+            return
+        name = self.storage[(ip, port)]
+        del self.storage[(ip, port)]
+        self.storage[new_ip, new_port] = name
+        self.__set_cameras(self.storage)
+
+# remove selected camera from the client storage
+    @Slot("QVariant")
+    def removeItem(self, socket):
+        ip, port = socket.split(':')
+        if (ip, port) not in self.storage:
+            return
+        del self.storage[(ip, port)]
+        self.__set_cameras(self.storage)
+
+    @Slot()
+    def start_scene(self):
+        start_server(self.scene_current)
+
+    @Slot()
+    def stop_scene(self):
+        stop_server()
+    
+    @Slot()
+    def get_storage(self):
+        return self.__get_cameras()
+
+    def __get_cameras(self):
+        return self.storage
+
+    def __set_cameras(self, new_storage):
+        self.storage = new_storage
+        self.onCamerasChanged.emit()
+        self.onCameraKeysChanged.emit()
+    
+    def __get_camera_keys(self):
+        aboba = [f'{ip}:{port}' for (ip, port) in self.storage.keys()]
+        return aboba
+
+    def __get_scene_keys(self):
+        return self.scene_list
+    
+    def __get_current_scene(self):
+        return self.current_scene
+
+    cameras = Property("QJsonObject",
+                       fget=__get_cameras,
+                       fset=__set_cameras,
+                       notify=onCamerasChanged)
+    
+    camera_keys = Property("QVariant",
+                       fget=__get_camera_keys,
+                       #fset=__set_camera_keys,
+                       notify=onCameraKeysChanged)
+
+    scene_keys = Property("QVariant",
+                       fget=__get_scene_keys,
+                       #fset=__set_camera_keys,
+                       notify=onSceneKeysChanged)
+    
+    scene_current = Property("QVariant",
+                       fget=__get_current_scene,
+                       #fset=__set_camera_keys,
+                       notify=onSceneKeysChanged)
 
 
-while True:
-    try:
-        print()
-        func = input(Style.BRIGHT + "Type a command\n\t[p] - set position\n\t[r] - set rotation\n\t[CTRL + c] - exit the program\ncommand: " + Style.RESET_ALL)
-        print()
-        if func == 'p':
-            nPos = tuple(map(int, input(Style.BRIGHT + "Input new position\n\tX Y Z: " + Style.RESET_ALL).split()))
-            if len(nPos) != 3:
-                raise IndexError
-            position = {
-                'X': nPos[0],
-                'Y': nPos[1],
-                'Z': nPos[2]
-            }
-            data = {'objectPath': '/Game/InCamVFXBP/Maps/LED_CurvedStage.LED_CurvedStage:PersistentLevel.CineCameraActor_1', 'functionName': 'SetActorLocation', 'parameters': {'NewLocation': position, 'bSweep': True}, 'generateTransaction': True}
-        
-        elif func == 'r':
-            nRot = tuple(map(int, input(Style.BRIGHT + "Input new rotation\n\tPitch Yaw Roll: " + Style.RESET_ALL).split()))
-            if len(nRot) != 3:
-                raise IndexError
-            rotation = {
-                "Pitch": nRot[0],
-                "Yaw": nRot[1],
-                "Roll": nRot[2]
-            }
-            data = {'objectPath': '/Game/InCamVFXBP/Maps/LED_CurvedStage.LED_CurvedStage:PersistentLevel.CineCameraActor_1', 'functionName': 'SetActorRotation', 'parameters': {'NewRotation': rotation, 'bSweep': True}, 'generateTransaction': True}
-        
-        else:
-            print(Back.RED + 'Wrong command')
-            continue
+if __name__ == '__main__':
+    app = QGuiApplication(sys.argv)
+    QQuickStyle.setStyle("Material")
+    engine = QQmlApplicationEngine()
 
-        response = requests.put(address + "/remote/object/call", headers = headers, data = json.dumps(data))
-        if json.loads(response.text)["ReturnValue"]:
-            print(Fore.GREEN + 'Responce: ' + "done")
-        else:
-            print(Fore.RED + 'Responce: ' + 'error')
-    except KeyboardInterrupt:
-        sys.exit(0)
-    except TypeError:
-        print(Back.RED + "Wrong input format")
-    except ValueError:
-        print(Back.RED + "Wrong input format")
-    except IndexError:
-        print(Back.RED + "Not enough args")
-    except:
-        print(Back.RED + "Something went wrong")
+    ptz_cameras = PTZCameras()
+
+    engine.rootContext().setContextProperty('PTZCameras', ptz_cameras)
+
+    # Get the path of the current directory, and then add the name
+    # of the QML file, to load it.
+    qml_file = QUrl.fromLocalFile('frontend/main.qml')
+    engine.load(qml_file)
+
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    sys.exit(app.exec())
