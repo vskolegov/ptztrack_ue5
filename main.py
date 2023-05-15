@@ -53,9 +53,9 @@ class PTZCameras(QObject):
 
     @Slot()
     def get_scenes(self):
-    """
-    load list of scenes by existed jsons
-    """
+        """
+        load list of scenes by existed jsons
+        """
         self.scene_list = get_scene_names()
         self.onSceneKeysChanged.emit()
 
