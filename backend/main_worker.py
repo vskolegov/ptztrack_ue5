@@ -16,8 +16,11 @@ running_flag = True
 #locker = threading.Lock()
 event = threading.Event()
 
-# формирование объектов OnvifCamera для каждой камеры в сцене и проверка доступа к камерам
+
 def onvif_connect(scenes):
+    """
+    Формирование объектов OnvifCamera для каждой камеры в сцене и проверка доступа к камерам
+    """
     cam_login = 'admin'
     cam_pass = 'Supervisor'
     cameras = []
@@ -40,8 +43,11 @@ def onvif_connect(scenes):
             print("Can't connect to ONVIF camera" + str(resp.Name))
         yield ptz, requestPtzStatus, camera['unreal_name']
 
-# проверка ответа от веб-сервера Unreal Engine
+
 def unreal_status():
+    """
+    Проверка ответа от веб-сервера Unreal Engine
+    """
     try:
         response = requests.get(address + "/remote/info")
         if response.status_code != 200:
@@ -51,17 +57,23 @@ def unreal_status():
     except:
         print("Can't connect to Unreal Engine")
 
-# отправка координат на виртуальную камеру
+
 def heavy(url, head, data):
+    """
+    Отправка координат на виртуальную камеру
+    """
     event.wait()
     response = requests.put(url, headers=head, data=data)
     print(response.elapsed.total_seconds())
     # print(f'fps: {1. / (t - last_sent[path][-1])}', end='\r')
     # jj[path].append(1. / (t - last_sent[path][-2]))
     #print(data)
-    
-# получение координат реальной камеры в пространстве, формирование json и передача его в heavy() для отправки в UE5
+
+
 def sequential(path, ptz, requestPtzStatus):
+    """
+    Получение координат реальной камеры в пространстве, формирование json и передача его в heavy() для отправки в UE5
+    """
     position = {}
     position['Roll'] = 0
     zoom = {}
@@ -85,8 +97,10 @@ def sequential(path, ptz, requestPtzStatus):
         t1.join()
         t2.join()
 
-# запуск sequential() в отдельном потоке для каждой камеры в сцене
 def processed(scenes):
+    """
+    Запуск sequential() в отдельном потоке для каждой камеры в сцене
+    """
     i = 0
     event.clear()
     for ptz, requestPtzStatus, unreal_name in onvif_connect(scenes):
