@@ -27,7 +27,8 @@ class PTZCameras(QObject):
 
         self.scene_list = dict()
         self.storage = dict()
-# upload cameras in from client storage to json
+
+    # upload cameras in from client storage to json
     @Slot()
     def initialize_cameras(self):
         add_cameras_to_scene(self.current_scene, self.storage)
@@ -41,7 +42,7 @@ class PTZCameras(QObject):
         self.__set_cameras(self.storage)
         self.onSceneKeysChanged.emit()
 
-# load cameras to selected scene from json
+    # load cameras to selected scene from json
     @Slot("QVariant")
     def load_scene(self, scene):
         self.storage = dict()
@@ -49,21 +50,28 @@ class PTZCameras(QObject):
             self.store(camera['ip'], camera['port'], camera['unreal_name'])
         self.current_scene = scene
         self.onSceneKeysChanged.emit()
-# load list of scenes by existed jsons
+
     @Slot()
     def get_scenes(self):
+    """
+    load list of scenes by existed jsons
+    """
         self.scene_list = get_scene_names()
         self.onSceneKeysChanged.emit()
 
-# load a new camera to the client storage
     @Slot("QVariant, QVariant, QVariant")
     def store(self, ip, port, name):
+        """
+        load a new camera to the client storage
+        """
         self.storage[(ip, port)] = name
         self.__set_cameras(self.storage)
 
-# load edited camera to the client storage
     @Slot("QVariant", "QVariant")
     def edit_camera(self, socket, new_socket):
+        """
+        load edited camera to the client storage
+        """
         ip, port = socket.split(':')
         new_ip, new_port = new_socket.split(':')
         if (ip, port) not in self.storage:
@@ -75,9 +83,11 @@ class PTZCameras(QObject):
         self.storage[new_ip, new_port] = name
         self.__set_cameras(self.storage)
 
-# remove selected camera from the client storage
     @Slot("QVariant")
     def removeItem(self, socket):
+        """
+        remove selected camera from the client storage
+        """
         ip, port = socket.split(':')
         if (ip, port) not in self.storage:
             return
@@ -91,7 +101,7 @@ class PTZCameras(QObject):
     @Slot()
     def stop_scene(self):
         stop_server()
-    
+
     @Slot()
     def get_storage(self):
         return self.__get_cameras()
@@ -103,14 +113,14 @@ class PTZCameras(QObject):
         self.storage = new_storage
         self.onCamerasChanged.emit()
         self.onCameraKeysChanged.emit()
-    
+
     def __get_camera_keys(self):
         aboba = [f'{ip}:{port}' for (ip, port) in self.storage.keys()]
         return aboba
 
     def __get_scene_keys(self):
         return self.scene_list
-    
+
     def __get_current_scene(self):
         return self.current_scene
 
@@ -118,7 +128,7 @@ class PTZCameras(QObject):
                        fget=__get_cameras,
                        fset=__set_cameras,
                        notify=onCamerasChanged)
-    
+
     camera_keys = Property("QVariant",
                        fget=__get_camera_keys,
                        #fset=__set_camera_keys,
@@ -128,7 +138,7 @@ class PTZCameras(QObject):
                        fget=__get_scene_keys,
                        #fset=__set_camera_keys,
                        notify=onSceneKeysChanged)
-    
+
     scene_current = Property("QVariant",
                        fget=__get_current_scene,
                        #fset=__set_camera_keys,
