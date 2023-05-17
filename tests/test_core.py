@@ -22,11 +22,6 @@ from ptztrack_ue5.configs.backend import (
 from ptztrack_ue5.backend.core import StateServer, Interface
 
 
-#  @pytest.fixture(scope=module)
-#  def interface(event_loop):
-#      yield Interface()
-#
-
 @pytest_asyncio.fixture(scope="function")
 async def client(event_loop):
     async with httpx.AsyncClient() as client:
@@ -52,8 +47,8 @@ async def test_info_unreal(client):
 @pytest.mark.parametrize("params, exc", [
     (
         {
-            'ip': '172.18.191.193',
-            'port': 2000,
+            'ip': '172.18.191.103',
+            'port': 80,
             'login': 'admin',
             'password': 'Supervisor',
         },

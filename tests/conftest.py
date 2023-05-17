@@ -23,14 +23,14 @@ def cameras():
     """
     yield [
         {
-            'ip': '172.18.191.193',
-            'port': 2000,
+            'ip': '172.18.191.103',
+            'port': 80,
             'login': 'admin',
             'password': 'Supervisor',
             'unreal_name': "/Game/VProdProject/Maps/Main.Main:PersistentLevel.CameraActor_3",
         },
         {
-            'ip': '172.18.191.196',
+            'ip': '172.18.191.102',
             'port': 80,
             'login': 'admin',
             'password': 'Supervisor',

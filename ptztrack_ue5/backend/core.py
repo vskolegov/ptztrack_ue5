@@ -212,7 +212,10 @@ class Interface():
             raise BackendError("Cameras aren't set")
         tasks = []
         for camera in self.__cameras:
-            await self._update_unreal_real_camera(camera)
+            try:
+                await self._update_unreal_real_camera(camera)
+            except BackendError as err:
+                logger.error(f"Problem with OnvifCamera: {err}")
         for task in tasks:
             await task
 
