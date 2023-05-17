@@ -43,13 +43,11 @@ def onvif_connect(scenes):
 # проверка ответа от веб-сервера Unreal Engine
 def unreal_status():
     try:
-        response = requests.get(address + "/remote/info")
-        if response.status_code != 200:
-            raise Exception
-        else:
-            print("Successfully connected to Unreal Engine")
+        response = requests.get('http://127.0.0.1:30010' + "/remote/info")
+        assert response.status_code != 200
+        return True
     except:
-        print("Can't connect to Unreal Engine")
+        return False
 
 # отправка координат на виртуальную камеру
 def heavy(url, head, data):
