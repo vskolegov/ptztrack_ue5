@@ -1,16 +1,18 @@
-import multiprocessing
-import time
-from time import sleep
-import random
+#  import multiprocessing
+#  import time
+#  from time import sleep
+#  import random
 import json
-import time
+# import time
 import threading
-import os
-import sys
+#  import os
+#  import sys
 import requests
-import signal
-from colorama import init, Fore, Back, Style
+#  import signal
+# from colorama import init, Fore, Back, Style
 from onvif import ONVIFCamera
+
+from configs.backend import URL_UNREAL_SERVER_STRING
 
 running_flag = True
 #locker = threading.Lock()
@@ -77,7 +79,7 @@ def sequential(path, ptz, requestPtzStatus):
     position = {}
     position['Roll'] = 0
     zoom = {}
-    url = "http://127.0.0.1:30010/remote/object/call"
+    url = URL_UNREAL_SERVER_STRING
     head = {'Content-Type': 'application/json'}
     while running_flag:
         event.wait()

@@ -9,7 +9,7 @@ import os
 import sys
 import requests
 import signal
-from colorama import init, Fore, Back, Style
+#  from colorama import init, Fore, Back, Style
 from onvif import ONVIFCamera
 from backend.main_worker import *
 

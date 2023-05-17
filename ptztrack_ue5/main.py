@@ -7,7 +7,7 @@ from PySide6.QtQuickControls2 import QQuickStyle
 from time import sleep
 import sys
 import signal
-from colorama import init, Fore, Back, Style
+#  from colorama import init, Fore, Back, Style
 from onvif import ONVIFCamera
 
 from backend.connector import *
