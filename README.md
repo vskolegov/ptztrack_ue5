@@ -22,7 +22,7 @@ poetry install
 ```
 4. For runing server, use command:
 ```
-poetry run start
+poetry run ptztrack_ue5
 ```
 ### For server:
 1. download pip packet
