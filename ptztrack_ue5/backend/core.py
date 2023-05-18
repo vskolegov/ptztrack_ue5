@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Callable
 from enum import Enum
 
-from httpx import AsyncClient, Response
+from httpx import AsyncClient, Response, ConnectError
 from onvif import ONVIFCamera
 from onvif.client import ONVIFService
 
@@ -23,7 +23,7 @@ from ptztrack_ue5.configs.backend import (
     WSDL_PATH,
     BackendError
 )
-from ptztrack_ue5.schemas.control import Camera, Scene
+from ptztrack_ue5.schemas.control import Camera, CameraStatus, Scene
 
 
 class ControlInterface():
@@ -72,9 +72,8 @@ class ControlInterface():
         media_profile = await media.GetProfiles()
         return media_profile[0].token
 
-    @staticmethod
     @asynccontextmanager
-    async def _connect_camera(camera_params: Camera):
+    async def _connect_camera(self, camera_params: Camera):
         """
         Corutine connect and return camera description
         """
@@ -93,9 +92,11 @@ class ControlInterface():
             device = await camera.create_devicemgmt_service()
             resp = await device.GetHostname()
         except Exception as err:
+            camera_params.status = CameraStatus.OFF
             raise BackendError(f"Can't connect to ONVIF Camera: {err}")
         else:
             logger.info(f"Successfully connect to ONVIF Camera: {resp.Name}")
+            camera_params.status = CameraStatus.ON
             yield ptz, request_ptz_status
         finally:
             logger.info(f"disconnect from camera {camera_params.ip}")
@@ -108,17 +109,21 @@ class ControlInterface():
         Update location in Unreal Engine with PUT request
         'owl' variable used for logging zoom effect
         """
-        async with AsyncClient() as client:
-            resp = await client.put(
-                f"{URL_UNREAL_SERVER_STRING}/{PATH_SERVER_FOR_REQUEST}",
-                json=data,
-            )
-        # raise exception if status is not Ok
-        if resp.status_code != 200 and not owl:
-            raise BackendError(f"Unreal Engine didnt' return OK")
-        elif resp.status_code != 200:
-            logger.warning(f"OWL plugin is not installed in Unreal Engine")
-        return resp
+        try:
+            async with AsyncClient() as client:
+                resp = await client.put(
+                    f"{URL_UNREAL_SERVER_STRING}/{PATH_SERVER_FOR_REQUEST}",
+                    json=data,
+                )
+            # raise exception if status is not Ok
+            if resp.status_code != 200 and not owl:
+                raise BackendError(f"Unreal Engine didnt' return OK")
+            elif resp.status_code != 200:
+                logger.warning(f"OWL plugin is not installed in Unreal Engine")
+        except Exception as err:
+            raise BackendError(f"Problem with UnrealEngine server: {err}")
+        else:
+            return resp
 
     @staticmethod
     async def __compute_rotation(ptz: ONVIFService,
@@ -169,8 +174,9 @@ class ControlInterface():
             "parameters": zoom,
         }
 
-    @staticmethod
-    async def __prepare_and_send_requests(ptz: ONVIFService, req_ptz_status: Any,
+
+    async def __prepare_and_send_requests(self, ptz: ONVIFService,
+                                          req_ptz_status: Any,
                                           camera: Camera):
         """
         This corurine is supply function for update_unreal_real_camera.
@@ -217,22 +223,20 @@ class ControlInterface():
         cameras = default_scene.cameras
         for camera in cameras:
             self.__tasks.append(asyncio.create_task(
-                ControlInterface._update_unreal_real_camera(camera)
+                self._update_unreal_real_camera(camera)
             ))
         for task in self.__tasks:
             await task
 
-    @staticmethod
-    async def _update_unreal_real_camera(camera: Camera):
+    async def _update_unreal_real_camera(self, camera: Camera):
         """
         Corutine create connect to OnvifCameras, and update virtual camera.
         """
         try:
-            async with ControlInterface._connect_camera(camera) as (ptz, req_ptz_status):
+            async with self._connect_camera(camera) as (ptz, req_ptz_status):
                 while True:
-                    await ControlInterface.__prepare_and_send_requests(ptz,
-                                                                req_ptz_status,
-                                                                camera)
+                    await self.__prepare_and_send_requests(ptz, req_ptz_status,
+                                                           camera)
         except asyncio.CancelledError:
             logger.info(f"Recive command for cancel task for "
                         f"{camera.ip}")
