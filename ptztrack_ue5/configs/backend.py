@@ -1,7 +1,7 @@
 """
 Variables, which use for backend
 """
-from os import environ
+from os import environ, path
 
 from dotenv import load_dotenv
 
@@ -14,6 +14,20 @@ class BackendError(Exception):
     """
     pass
 
+# JSON path folder is the project folder
+PROJECT_PATH = path.dirname(path.dirname(path.dirname(path.abspath(__file__))))
+JSON_PATH = path.join(PROJECT_PATH, "jsons")
+
+
+# FastAPI settings
+IP_ADDR_FASTAPI = environ.get("IP_ADDR_FASTAPI")
+PORT_FASTAPI = environ.get("PORT_FASTAPI")
+if ( IP_ADDR_FASTAPI is None or \
+        PORT_FASTAPI is None ):
+    raise BackendError(
+        "IP_ADDR_FASTAPI or PORT_FASTAPI are not set"
+    )
+PORT_FASTAPI = int(PORT_FASTAPI)
 
 # URL constraction constants
 VERSION_PROTOCOL = "http://"

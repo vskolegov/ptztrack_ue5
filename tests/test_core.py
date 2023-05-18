@@ -19,7 +19,7 @@ from ptztrack_ue5.configs.backend import (
     URL_UNREAL_SERVER_STRING,
     BackendError
 )
-from ptztrack_ue5.backend.core import StateServer, Interface
+from ptztrack_ue5.backend.core import ControlInterface
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -70,7 +70,7 @@ async def test_connect_onvif_camera(params, exc):
     Testing connect to onvif camera
     """
     with exc:
-        async with Interface._connect_camera(params) as (ptz, req_ptz_status):
+        async with ControlInterface._connect_camera(params) as (ptz, req_ptz_status):
             status = await ptz.GetStatus(req_ptz_status)
             print(f"Pitch: {status.Position.PanTilt.y}")
             print(f"Yaw: {status.Position.PanTilt.x}")
@@ -109,7 +109,7 @@ async def test_connect_onvif_camera(params, exc):
 @pytest.mark.asyncio
 async def test_update_location(req, exc):
     with exc:
-        resp = await Interface._update_unreal_camera(req)
+        resp = await ControlInterface._update_unreal_camera(req)
         print(f"unreal return {resp.json()}")
 
 
@@ -118,12 +118,11 @@ async def test_update_unreal_real_camera(cameras):
     """
     Checking run server
     """
-    async def print_random(interaface: Interface):
+    async def print_random(control: ControlInterface):
         await asyncio.sleep(5)
-        interface.state = StateServer.OFF
         print("Turned off server...")
-    interface = Interface(cameras)
-    interface.state = StateServer.OFF
+        control.stop()
+    interface = ControlInterface(cameras)
     task1 = asyncio.create_task(interface.run())
     task2 = asyncio.create_task(print_random(interface))
     await task1

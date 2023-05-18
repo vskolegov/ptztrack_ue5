@@ -12,6 +12,7 @@ from onvif import ONVIFCamera
 from onvif.client import ONVIFService
 
 from loguru import logger
+from ptztrack_ue5.backend.json_settings import reload_scenes
 
 from ptztrack_ue5.configs.backend import (
     pantilt_x_coef,
@@ -22,46 +23,45 @@ from ptztrack_ue5.configs.backend import (
     WSDL_PATH,
     BackendError
 )
+from ptztrack_ue5.schemas.control import Camera, Scene
 
 
-class StateServer(Enum):
-    """
-    States type server
-    """
-    OFF = 0
-    ON = 1
-
-
-class Interface():
+class ControlInterface():
     """
     This class is responsible for state and work connection cameras and
     Unreal Engine
     """
-    __state = StateServer.OFF
-    __cameras = None
+    __scenes = None
+    __tasks = []
+    __default_scene = None
 
-    def __init__(self, cameras: list[dict[str, Any]] | None= None):
-        if cameras is not None:
-            self.cameras = cameras
+    def __init__(self):
+        self.__tasks = []
+        self.__scenes = None
+        self.__default_scene = None
 
-    @property
-    def cameras(self) -> list[dict[str, Any]] | None:
-        return self.__cameras
+    async def get_default_scene(self) -> Scene:
+        """
+        Getter for default scene. Function implemented without
+        @property, because setter for default scene is awaitable
+        """
+        if self.__default_scene is None:
+            await self.set_default_scene()
+        return Scene(
+            name=self.__default_scene, # type: ignore
+            cameras=self.__scenes.scenes[self.__default_scene] # type: ignore
+        )
 
-    @cameras.setter
-    def cameras(self, cameras: list[dict[str, Any]]):
-        if not isinstance(cameras, list):
-            raise TypeError("Cameras must be list[dict[str, Any]]")
-        self.__cameras = cameras
-        self.__state = StateServer.OFF
-
-    @property
-    def state(self) -> StateServer:
-        return self.__state
-
-    @state.setter
-    def state(self, state: StateServer):
-        self.__state = state
+    async def set_default_scene(self, name: str | None = None) -> None:
+        """
+        Async setter for default_scene
+        """
+        if self.__scenes is None:
+            self.__scenes = await reload_scenes()
+        if name is None:
+            self.__default_scene = list(self.__scenes.scenes.keys())[0] # type: ignore
+        if name in self.__scenes.scenes.keys():
+            self.__default_scene = name
 
     @staticmethod
     async def __get_media_profiles_token(camera: ONVIFCamera) -> str:
@@ -74,18 +74,12 @@ class Interface():
 
     @staticmethod
     @asynccontextmanager
-    async def _connect_camera(real_camera: dict):
+    async def _connect_camera(camera_params: Camera):
         """
         Corutine connect and return camera description
-        {
-            ip: value,
-            port: value,
-            login: value,
-            password: value,
-        }
         """
-        camera = ONVIFCamera(real_camera["ip"], real_camera["port"],
-                             real_camera["login"], real_camera["password"],
+        camera = ONVIFCamera(str(camera_params.ip), camera_params.port,
+                             camera_params.login, camera_params.password,
                              WSDL_PATH) # type: ignore
         try:
             await camera.update_xaddrs()
@@ -93,7 +87,7 @@ class Interface():
             ptz = await camera.create_ptz_service()
             request_ptz_status = ptz.create_type("GetStatus") # type: ignore
             request_ptz_status.ProfileToken = (
-                await Interface.__get_media_profiles_token(camera)
+                await ControlInterface.__get_media_profiles_token(camera)
             )
             # Create devicemgmt
             device = await camera.create_devicemgmt_service()
@@ -104,7 +98,7 @@ class Interface():
             logger.info(f"Successfully connect to ONVIF Camera: {resp.Name}")
             yield ptz, request_ptz_status
         finally:
-            logger.info(f"disconnect from camera {real_camera['ip']}")
+            logger.info(f"disconnect from camera {camera_params.ip}")
             await camera.close()
 
     @staticmethod
@@ -177,57 +171,70 @@ class Interface():
 
     @staticmethod
     async def __prepare_and_send_requests(ptz: ONVIFService, req_ptz_status: Any,
-                                          camera: dict[str, Any]):
+                                          camera: Camera):
         """
         This corurine is supply function for update_unreal_real_camera.
         """
         try:
-            zoom = await Interface.__compute_zoom(ptz, req_ptz_status)
-            rotation = await Interface.__compute_rotation(ptz, req_ptz_status)
-            resp = await Interface._update_unreal_camera(
-                data=Interface.__create_request_body_rotation_for_unreal(
-                    rotation, camera["unreal_name"]))
+            zoom = await ControlInterface.__compute_zoom(ptz, req_ptz_status)
+            rotation = await ControlInterface.__compute_rotation(ptz, req_ptz_status)
+            resp = await ControlInterface._update_unreal_camera(
+                data=ControlInterface.__create_request_body_rotation_for_unreal(
+                    rotation, camera.unreal_name))
             logger.debug(
                 f"Status updating rotation"
                 f"(new data: {rotation['Pitch']}, {rotation['Yaw']}) for "
-                f"{camera['ip']}: {resp.json()['ReturnValue']}"
+                f"{camera.ip}: {resp.json()['ReturnValue']}"
             )
-            resp = await Interface._update_unreal_camera(
-                data=Interface.__create_request_body_zoom_for_unreal(
-                    zoom, camera["unreal_name"]), owl=True)
+            resp = await ControlInterface._update_unreal_camera(
+                data=ControlInterface.__create_request_body_zoom_for_unreal(
+                    zoom, camera.unreal_name), owl=True)
             if resp.json():
                 logger.debug(
                     f"Status updating zoom"
                     f"(new zoom {zoom['InFocalLength']}) for "
-                    f"{camera['ip']}: {resp.json()}"
+                    f"{camera.ip}: {resp.json()}"
                 )
         except BackendError as err:
             logger.error(f"Sending request error: {err}")
+
+    def stop(self):
+        """
+        Stop task and clear list
+        """
+        for task in self.__tasks:
+            task.cancel()
 
     async def run(self):
         """
         Run tasks
         """
-        if self.__cameras is None:
-            raise BackendError("Cameras aren't set")
-        tasks = []
-        for camera in self.__cameras:
-            try:
-                await self._update_unreal_real_camera(camera)
-            except BackendError as err:
-                logger.error(f"Problem with OnvifCamera: {err}")
-        for task in tasks:
+        # Set default scene if is not exsist
+        if self.__default_scene is None:
+            await self.set_default_scene()
+        self.stop()
+        default_scene = await self.get_default_scene()
+        cameras = default_scene.cameras
+        for camera in cameras:
+            self.__tasks.append(asyncio.create_task(
+                ControlInterface._update_unreal_real_camera(camera)
+            ))
+        for task in self.__tasks:
             await task
 
-    async def _update_unreal_real_camera(self, camera: dict[str, Any]):
+    @staticmethod
+    async def _update_unreal_real_camera(camera: Camera):
         """
         Corutine create connect to OnvifCameras, and update virtual camera.
         """
-        async with Interface._connect_camera(camera) as (ptz, req_ptz_status):
-            while True:
-                await Interface.__prepare_and_send_requests(ptz,
-                                                            req_ptz_status,
-                                                            camera)
-                # If server runing, but not StateServer.ON, then break
-                if self.__state == StateServer.OFF:
-                    break
+        try:
+            async with ControlInterface._connect_camera(camera) as (ptz, req_ptz_status):
+                while True:
+                    await ControlInterface.__prepare_and_send_requests(ptz,
+                                                                req_ptz_status,
+                                                                camera)
+        except asyncio.CancelledError:
+            logger.info(f"Recive command for cancel task for "
+                        f"{camera.ip}")
+        except BackendError as err:
+            logger.error(f"Problem with OnvifCamera: {err}")

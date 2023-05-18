@@ -15,7 +15,6 @@ def event_loop():
     yield loop
     loop.close()
 
-
 @pytest.fixture(scope="module")
 def cameras():
     """
@@ -31,6 +30,13 @@ def cameras():
         },
         {
             'ip': '172.18.191.102',
+            'port': 80,
+            'login': 'admin',
+            'password': 'Supervisor',
+            'unreal_name': "/Game/VProdProject/Maps/Main.Main:PersistentLevel.CameraActor_1",
+        },
+        {
+            'ip': '172.18.191.196',
             'port': 80,
             'login': 'admin',
             'password': 'Supervisor',
