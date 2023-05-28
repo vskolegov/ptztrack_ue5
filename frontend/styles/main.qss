@@ -1,0 +1,85 @@
+QMainWindow{
+    background-color: #0c0c26;
+}
+
+#IpList{
+    background-color: #0c0c26;
+}
+
+#TitleLabel{
+    font-size: 30pt;
+    color: white;
+}
+
+#LabelStatusLabel{
+    color: black;
+    background-color: #ffffff;
+    border: 1px solid #121239;
+    border-radius: 10px;
+    padding: 15px;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+QLineEdit{
+    color: black;
+    border: 1px solid #000000;
+    border-radius: 10px;
+    background-color: #ffffff;
+    padding: 10px;
+}
+
+QLineEdit:hover{
+    border-color: #ffa02f;
+}
+
+QPushButton {
+    background-color: #ffffff;
+    border: 1px solid #121239;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+QPushButton:hover {
+    background-color: #ebebeb;
+    border-color: #2a2a85;
+}
+
+QPushButton:pressed {
+    background-color: #dfdfdf;
+    border-color: #3c3cbf;
+}
+
+
+QScrollArea {
+    border: none;
+}
+
+QScrollBar {
+    background: #1a1a3e;
+    border-radius: 3px;
+}
+
+QScrollBar:vertical {
+    width: 7px;
+}
+
+QScrollBar::handle {
+    background: #222271;
+    border-radius: 3px;
+}
+
+QScrollBar::handle:vertical {
+    width: 15px;
+    min-height: 10px;
+}
+
+QScrollBar::add-line {
+    border: none;
+    background: none;
+}
+
+QScrollBar::sub-line {
+    border: none;
+    background: none;
+}
