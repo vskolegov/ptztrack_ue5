@@ -11,19 +11,6 @@ This is a desktop application, so you can see the interface.
 
 ## Install
 
-### For development
-
-1. Install poetry from official site
-2. Download this repository
-3. Go to project folder, activate virtual environment and install dependencies
-```
-poetry shell
-poetry install
-```
-4. For runing server, use command:
-```
-poetry run ptztrack_ue5
-```
 ### For server:
 1. download pip packet
 2. install packet
@@ -98,5 +85,15 @@ graph TB
     view --sees--> main
     images --updates--> ue_cam[Unreal Cameras]
     cam[PTZ cameras] <--request--> images
-
+```
+# Concept scheme
+```mermaid
+graph LR
+    
+    user((fa:fa-users user)) --interacts--> application[fa:fa-server application]
+    application -.- scenes{{fa:fa-file UE scenes}}
+    admin((fa:fa-user admin)) --manages--> scenes
+    application --requests--> cameras[fa:fa-video-camera ptz cameras]
+    cameras --responses--> application
+    application --sends--> UE[fa:fa-desktop UE device]
 ```
